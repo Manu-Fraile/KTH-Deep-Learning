@@ -49,6 +49,30 @@ def crossentrpoyLoss(X, Y, W, b):
     return (-1)*m.log(p_y, 10)
 
 
+def ComputeAccuracy(X, Y, W, b):
+
+    dataNum = trainX.shape[0]
+    bingo = 0
+
+    for i in range(trainX.shape[0]):
+        P = evaluateClassifier(X[:, i], W, b)
+        k_star = np.argmax(P)
+
+        if k_star == Y[i]:
+            bingo += 1
+
+    acc = bingo/dataNum
+
+    return acc
+
+
+def miniBatchGD(X, Y, GDparams, W, b, lamda):
+
+    J = ComputeCost(X, Y, W, b, lamda)
+    Wstar, bstar = np.argmin(J)
+
+    return Wstar, bstar
+
 if __name__ == "__main__":
 
     # Take care with transpose or not
@@ -76,5 +100,15 @@ if __name__ == "__main__":
     W = np.random.normal(mu, sigma, size=(K, d))
     b = np.random.normal(mu, sigma, size=(K, 1))
 
+    # Control parameters. GDparams
+    n_batch = 100
+    eta = 0.001
+    n_epochs = 20
+    GDparams = {'n_batch': n_batch, 'eta': eta, 'n_epochs': n_epochs}
+
+    lamda = 0
+
+
+
     # P = evaluateClassifier(trainX[:, :100], W, b)
-    print(trainX.shape[1])
+    #print(trainX.shape[1])
