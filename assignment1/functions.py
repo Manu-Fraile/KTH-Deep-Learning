@@ -15,7 +15,7 @@ def LoadBatch(filename):
     return dict
 
 
-def ComputeGradsNum(X, Y, P, W, b, lamda, h):
+def ComputeGradsNum(X, Y, W, b, lamda, h):
     # Converted from matlab code
     no = W.shape[0]
     d = X.shape[0]
@@ -43,7 +43,7 @@ def ComputeGradsNum(X, Y, P, W, b, lamda, h):
     return [grad_W, grad_b]
 
 
-def ComputeGradsNumSlow(X, Y, P, W, b, lamda, h):
+def ComputeGradsNumSlow(X, Y, W, b, lamda, h):
     # Converted from matlab code
     no = W.shape[0]
     d = X.shape[0]
