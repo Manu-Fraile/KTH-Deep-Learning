@@ -1,7 +1,5 @@
-import math as m
 from functions import *
-
-from numba import jit, cuda
+import matplotlib.pyplot as plt
 
 
 def normalise(matrix):
@@ -26,21 +24,11 @@ def evaluateClassifier(X, W, b):
     # b (Kx1)
     # p (Kx1)
 
-    if X.shape == (3072,):
+    if X.shape == (len(X),):
         X = X.reshape(len(X), 1)
-
-    #print(X.shape)
-    #print(W.shape)
-
-    # X = X.reshape(len(X), 1)
 
     s = np.dot(W, X) + b
     p = softmax(s)
-
-    #print(p.shape)
-    #print('\n\n')
-
-    #print('El valor de p es: {}'.format(p))
 
     return p
 
@@ -53,9 +41,6 @@ def ComputeCost(X, Y, W, b, lamda):
 
     J = (sum1/D) + (lamda*sum2)
 
-    #print('WIP')
-    #print(J)
-
     return J
 
 
@@ -63,15 +48,10 @@ def crossentrpoyLoss(X, Y, W, b):
 
     p = evaluateClassifier(X, W, b)
 
-    if Y.shape == (10,):
-        Y = Y.reshape(10, 1)
+    if Y.shape == (len(Y),):
+        Y = Y.reshape(len(Y), 1)
 
-    #print(p.shape)
-    #print(Y.shape)
-
-    p_y = np.dot(Y.T, p)
-
-    return (-1)*(np.sum(Y*np.log(p)))#m.log(p_y, 10)
+    return (-1)*(np.sum(Y*np.log(p)))
 
 
 def ComputeAccuracy(X, y, W, b):
@@ -82,10 +62,6 @@ def ComputeAccuracy(X, y, W, b):
     for i in range(X.shape[1]):
         P = evaluateClassifier(X[:, i], W, b)
         k_star = np.argmax(P)
-
-        #print(k_star)
-        #print(y[i])
-        #print('\n\n')
 
         if k_star == y[i]:
             bingo += 1
@@ -108,10 +84,9 @@ def ComputeGradients(X, Y, W, b, lamda):
     return [grad_W, grad_b]
 
 
-@jit(target="cuda")
 def miniBatchGD(X, Y, GDparams, W, b, lamda):
 
-    [grad_W, grad_b] = ComputeGradsNum(X, Y, W, b, lamda, 0.000001)
+    [grad_W, grad_b] = ComputeGradients(X, Y, W, b, lamda)
 
     W_t = W - GDparams['eta']*grad_W
     b_t = b - GDparams['eta']*grad_b
@@ -119,10 +94,21 @@ def miniBatchGD(X, Y, GDparams, W, b, lamda):
     return W_t, b_t
 
 
+def saveData(trainCost, validateCost, n_epochs, accuracy):
+    plt.plot(list(range(n_epochs)), trainCost, label='train loss')
+    plt.plot(list(range(n_epochs)), validateCost, label='validation loss')
+    plt.xlabel("epoch")
+    plt.ylabel("loss")
+    plt.legend()
+    plt.savefig('Result_Pics/cost4.png')
+
+    file = open("Result_Pics/Accuracy.txt", "a")
+    file.write('\nAccuracy 4: ' + str(accuracy))
+    file.close()
+
+
 if __name__ == "__main__":
 
-    # Take care with transpose or not
-    # Take care with Y that goes from 0,...,9 and not 1,...,10
     training = LoadBatch('cifar-10-batches-py/data_batch_1')
     trainX = normalise(training[b'data'].T.astype(int))
     trainy = [int(i) for i in training[b'labels']]
@@ -155,16 +141,16 @@ if __name__ == "__main__":
     n_epochs = 40
     GDparams = {'n_batch': n_batch, 'eta': eta, 'n_epochs': n_epochs}
 
-    lamda = 0
+    lamda = 1
     h = 0.000001
 
-    acc = []
-    loss = []
-    cost = []
+    # TRAIN THE MODEL
+    accuracy = 0
+    totalTrainCost = []
+    totalValidateCost = []
 
     for n in range(n_epochs):
         for j in range(n_batch):
-            print(j)
             N = int(trainX.shape[1] / n_batch)
             j_start = j*N
             j_end = (j+1)*N
@@ -175,61 +161,13 @@ if __name__ == "__main__":
 
             W, b = miniBatchGD(Xbatch, Ybatch, GDparams, W, b, lamda)
 
-            accuracy = ComputeAccuracy(Xbatch, ybatch, W, b)
-            acc.append(accuracy)
+        trainCost = ComputeCost(trainX, trainY, W, b, lamda)
+        validateCost = ComputeCost(validX, validY, W, b, lamda)
 
-            '''''
-            print('\n\n loosing \n\n')
-            loosing = crossentrpoyLoss(Xbatch, Ybatch, W, b)
-            print(loosing)
-            print('-------------')
+        totalTrainCost.append(trainCost)
+        totalValidateCost.append(validateCost)
 
-            loss.append(loosing)
-            '''''
-        coste = 0
-        coste = ComputeCost(Xbatch, Ybatch, W, b, lamda)
-        cost.append(coste)
-        print(cost)
+    accuracy = ComputeAccuracy(testX, testy, W, b)
 
-
-        ''''
-        loosing = 0
-        perder = []
-
-        for i in range(100):
-            #print(i)
-            loosing += crossentrpoyLoss(Xbatch[:, i], Ybatch[:, i], W, b)
-            perder.append(crossentrpoyLoss(Xbatch[:, i], Ybatch[:, i], W, b))
-            
-
-        loss.append(np.argmax(perder))
-        '''''
-
-    #print(len(cost))
-    print(cost)
-    #print(acc)
-
-
-
-    '''''
-    X = trainX[:, 0]
-    Y = trainY[:, 0]
-    W = W[:, :]
-    '''''
-
-    # montage(W)
-
-    '''''
-    [ngrad_W, ngrad_b] = ComputeGradsNumSlow(X.reshape(len(X), 1), Y.reshape(len(Y), 1), W, b, lamda, h)
-    [mgrad_W, mgrad_b] = ComputeGradients(X.reshape(len(X), 1), Y.reshape(len(Y), 1), W, b, lamda)
-    check = np.sum(ngrad_b)-np.sum(mgrad_b)
-    print(check)
-    print(ngrad_W.shape)
-    print(mgrad_W.shape)
-    print(ngrad_b.shape)
-    print(mgrad_b.shape)
-    print(ngrad_W-mgrad_W)
-    '''''
-
-    # P = evaluateClassifier(trainX[:, :100], W, b)
-    # print(trainX.shape[1])
+    saveData(totalTrainCost, totalValidateCost, n_epochs, accuracy)
+    montage(W)

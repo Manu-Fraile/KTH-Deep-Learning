@@ -91,7 +91,7 @@ def montage(W):
             ax[i][j].imshow(sim, interpolation='nearest')
             ax[i][j].set_title("y=" + str(5 * i + j))
             ax[i][j].axis('off')
-    plt.show()
+    plt.savefig('Result_Pics/Wmatrix4.png')
 
 
 def save_as_mat(data, name="model"):
