@@ -25,13 +25,20 @@ def initialise(d, m, K, mu=0):
 
     W1 = np.random.normal(mu, sigma1, size=(m, d))
     W2 = np.random.normal(mu, sigma2, size=(K, m))
-    b1 = np.random.normal(mu, sigma1, size=(m, 1))
-    b2 = np.random.normal(mu, sigma2, size=(K, 1))
+    b1 = np.zeros((m, 1))
+    b2 = np.zeros((K, 1))
 
     W = [W1, W2]
     b = [b1, b2]
 
     return W, b
+
+
+def reluActivation(s):
+
+    s[s < 0] = 0
+
+    return s
 
 
 def evaluateClassifier(X, W, b):
@@ -46,45 +53,35 @@ def evaluateClassifier(X, W, b):
     if X.shape == (len(X),):
         X = X.reshape(len(X), 1)
 
-    print(len(W))
-    print('W1: ' + str(len(W[0])) + 'x' + str(len((W[0])[0])))
-    print('W2: ' + str(len(W[1])) + 'x' + str(len((W[1])[0])))
-    print('b1: ' + str(len(b[0])) + 'x' + str(len((b[0])[0])))
-    print('b2: ' + str(len(b[1])) + 'x' + str(len((b[1])[0])))
-    print('X: ' + str(X.shape))
-    #print(W)
-    #print('\n')
-    #print((W[0])[0])
-
     s1 = np.dot(W[0], X) + b[0]
-    print('\n')
-    print('s1: ' + str(len(s1)) + 'x' + str(len(s1[0])))
-    h = max(0, s1.all())
+    h = reluActivation(s1)
     s = np.dot(W[1], h) + b[1]
     p = softmax(s)
 
-    return p
+    return p, h
 
 
 def ComputeCost(X, Y, W, b, lamda):
 
-    sum1 = np.sum(crossentrpoyLoss(X, Y, W, b))
-    sum2 = np.sum(W**2)
-    D = X.shape[1]
+    loss = crossentrpoyLoss(X, Y, W, b)
+    reg_term = np.sum(W[0]**2) + np.sum(W[1]**2)
 
-    J = (sum1/D) + (lamda*sum2)
+    J = loss + (lamda*reg_term)
 
     return J
 
 
 def crossentrpoyLoss(X, Y, W, b):
 
-    p = evaluateClassifier(X, W, b)
+    p, _ = evaluateClassifier(X, W, b)
+    D = X.shape[1]
 
     if Y.shape == (len(Y),):
         Y = Y.reshape(len(Y), 1)
 
-    return (-1)*(np.sum(Y*np.log(p)))
+    loss = (1/D) * (-(np.sum(Y*np.log(p))))
+
+    return loss
 
 
 def ComputeAccuracy(X, y, W, b):
@@ -93,7 +90,7 @@ def ComputeAccuracy(X, y, W, b):
     bingo = 0
 
     for i in range(X.shape[1]):
-        P = evaluateClassifier(X[:, i], W, b)
+        P, _ = evaluateClassifier(X[:, i], W, b)
         k_star = np.argmax(P)
 
         if k_star == y[i]:
@@ -107,42 +104,67 @@ def ComputeAccuracy(X, y, W, b):
 def ComputeGradients(X, Y, W, b, lamda):
 
     B = X.shape[1]
-
-    print('ComputeGradients: ' + str(X.shape))
-
-
-    P = evaluateClassifier(X, W, b)
+    P, h = evaluateClassifier(X, W, b)
     G = -(Y-P)
 
-    grad_W = (1/B)*np.dot(G, X.T) + 2*lamda*W
-    grad_b = np.mean(G, axis=-1, keepdims=True)
+    grad_W2 = (1/B)*np.dot(G, h.T) + 2*lamda*W[1]
+    grad_b2 = np.reshape((1/B)*np.dot(G, np.ones(B)), (10, 1))
+
+    # Back propagate the gradient through 2nd fully connected layer
+    G = np.dot(W[1].T, G)
+    G = np.multiply(G, h > 0)
+
+    grad_W1 = (1/B)*np.dot(G, X.T) + 2*lamda*W[0]
+    grad_b1 = np.reshape((1/B)*np.dot(G, np.ones(B)), (50, 1))
+
+    grad_W = [grad_W1, grad_W2]
+    grad_b = [grad_b1, grad_b2]
 
     return [grad_W, grad_b]
 
 
 def miniBatchGD(X, Y, GDparams, W, b, lamda):
 
-    print('minibatchGD: ' + str(X.shape))
-
     [grad_W, grad_b] = ComputeGradients(X, Y, W, b, lamda)
 
-    W_t = W - GDparams['eta']*grad_W
-    b_t = b - GDparams['eta']*grad_b
+    W1_t = W[0] - GDparams['eta']*grad_W[0]
+    W2_t = W[1] - GDparams['eta']*grad_W[1]
+    b1_t = b[0] - GDparams['eta']*grad_b[0]
+    b2_t = b[1] - GDparams['eta']*grad_b[1]
+
+    W_t = [W1_t, W2_t]
+    b_t = [b1_t, b2_t]
 
     return W_t, b_t
 
 
-def saveData(trainCost, validateCost, n_epochs, accuracy):
-    plt.plot(list(range(n_epochs)), trainCost, label='train loss')
-    plt.plot(list(range(n_epochs)), validateCost, label='validation loss')
-    plt.xlabel("epoch")
+def saveData(totalCost, totalLoss, totalAcc, t):
+    plt.figure(1)
+    plt.plot(t, totalCost[0], label='training cost')
+    plt.plot(t, totalCost[1], label='validation cost')
+    plt.ylim([0, 4])
+    plt.xlabel("update step")
+    plt.ylabel("cost")
+    plt.legend()
+    plt.savefig('Result_Pics/cost1.png')
+
+    plt.figure(2)
+    plt.plot(t, totalLoss[0], label='training loss')
+    plt.plot(t, totalLoss[1], label='validation loss')
+    plt.ylim([0, 3.5])
+    plt.xlabel("update step")
     plt.ylabel("loss")
     plt.legend()
-    plt.savefig('Result_Pics/cost4.png')
+    plt.savefig('Result_Pics/loss1.png')
 
-    file = open("Result_Pics/Accuracy.txt", "a")
-    file.write('\nAccuracy 4: ' + str(accuracy))
-    file.close()
+    plt.figure(3)
+    plt.plot(t, totalAcc[0], label='training accuracy')
+    plt.plot(t, totalAcc[1], label='validation accuracy')
+    plt.ylim([0, 0.8])
+    plt.xlabel("update step")
+    plt.ylabel("accuracy")
+    plt.legend()
+    plt.savefig('Result_Pics/accuracy1.png')
 
 
 if __name__ == "__main__":
@@ -175,21 +197,54 @@ if __name__ == "__main__":
 
     # Control parameters. GDparams
     n_batch = 100
-    eta = 0.001
-    n_epochs = 40
+    l = 0
+    eta_min = 0.00001
+    eta_max = 0.1
+    n_s = 2 * math.floor(n/n_batch)
+    eta = eta_min
+    n_epochs = 200
     GDparams = {'n_batch': n_batch, 'eta': eta, 'n_epochs': n_epochs}
 
-    lamda = 1
+    lamda = 0.01
     h_param = 0.000001
 
     # TRAIN THE MODEL
+    t = -1
+    total_t = 0
     accuracy = 0
+    cycles = 2
+
     totalTrainCost = []
     totalValidateCost = []
 
+    totalTrainLoss = []
+    totalValidateLoss = []
+
+    totalTrainAcc = []
+    totalValidateAcc = []
+
+    totalT = []
+    etaEv = []
+
+    N = int(trainX.shape[1] / n_batch)
     for n in range(n_epochs):
+
+        trainCost = ComputeCost(trainX, trainY, W, b, lamda)
+        validateCost = ComputeCost(validX, validY, W, b, lamda)
+        trainLoss = crossentrpoyLoss(trainX, trainY, W, b)
+        validateLoss = crossentrpoyLoss(validX, validY, W, b)
+        trainAcc = ComputeAccuracy(trainX, trainy, W, b)
+        validateAcc = ComputeAccuracy(validX, validy, W, b)
+
+        totalTrainCost.append(trainCost)
+        totalValidateCost.append(validateCost)
+        totalTrainLoss.append(trainLoss)
+        totalValidateLoss.append(validateLoss)
+        totalTrainAcc.append(trainAcc)
+        totalValidateAcc.append(validateAcc)
+        totalT.append(total_t)
+
         for j in range(n_batch):
-            N = int(trainX.shape[1] / n_batch)
             j_start = j*N
             j_end = (j+1)*N
 
@@ -197,15 +252,42 @@ if __name__ == "__main__":
             Ybatch = trainY[:, j_start:j_end]
             ybatch = trainy[j_start:j_end]
 
+            t += 1
+            if (t >= 2*l*n_s) and (t <= (2*l+1)*n_s):
+                GDparams['eta'] = eta_min + ((t-2*l*n_s)/n_s)*(eta_max-eta_min)
+
+            if (t >= (2*l+1)*n_s) and (t <= 2*(l+1)*n_s):
+                GDparams['eta'] = eta_max - ((t-(2*l+1)*n_s)/n_s)*(eta_max-eta_min)
+
+                if t == 2*(l+1)*n_s:
+                    t = -1
+
+            etaEv.append(GDparams['eta'])
+
+            total_t += 1
+            #print('Update step: ' + str(total_t))
+
+            if total_t >= cycles * 2*n_s:
+                break
+
             W, b = miniBatchGD(Xbatch, Ybatch, GDparams, W, b, lamda)
 
-        trainCost = ComputeCost(trainX, trainY, W, b, lamda)
-        validateCost = ComputeCost(validX, validY, W, b, lamda)
+        print('Epoch ' + str(n) + ' of ' + str(n_epochs))
 
-        totalTrainCost.append(trainCost)
-        totalValidateCost.append(validateCost)
+        if total_t >= cycles * 2*n_s:
+            break
 
-    accuracy = ComputeAccuracy(testX, testy, W, b)
+    totalCost = [totalTrainCost, totalValidateCost]
+    totalLoss = [totalTrainLoss, totalValidateLoss]
+    totalAcc = [totalTrainAcc, totalValidateAcc]
 
-    saveData(totalTrainCost, totalValidateCost, n_epochs, accuracy)
-    montage(W)
+    print(ComputeAccuracy(testX, testy, W, b))
+
+    saveData(totalCost, totalLoss, totalAcc, totalT)
+
+    plt.close("all")
+    plt.figure(4)
+    plt.plot(list(range(total_t)), etaEv)
+    plt.xlabel("update step")
+    plt.ylabel("eta")
+    plt.show()
