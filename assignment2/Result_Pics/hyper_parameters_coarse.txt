@@ -1,4 +1,3 @@
-
 Candidate number 0 has an accuracy of 0.4436 for a lambda of 2.529924785019942e-05
 Candidate number 1 has an accuracy of 0.3814 for a lambda of 0.09367601982526924
 Candidate number 2 has an accuracy of 0.457 for a lambda of 0.0005277872130588202
