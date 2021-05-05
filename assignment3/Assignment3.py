@@ -192,7 +192,7 @@ class ConvNet:
         self.k2 = 3  # width of filters applied in layer 2
 
         # training parameters
-        self.eta = 0.001
+        self.eta = 0.01
         self.rho = 0.9
 
         # dimensional parameters
@@ -422,7 +422,8 @@ class ConvNet:
         if compensate:
             n_batch = floor((min_class * len(self.data.balance_train)) / batch_size)
         else:
-            n_batch = floor(N / batch_size)
+            #n_batch = floor(N / batch_size)
+            n_batch = 7
 
         for n in range(n_epochs):
             m = 0
@@ -509,7 +510,7 @@ class ConvNet:
         plt.xlabel("update step")
         plt.ylabel("cost")
         plt.legend()
-        plt.savefig('./Result_Pics/cost2.png')
+        plt.savefig('./Result_Pics/cost78.png')
 
     def Test(self, X):
         MF = self.fConvolutionMatrices(self.bestF, self.n_len, self.n_len1)
@@ -545,7 +546,7 @@ class ConvNet:
 if __name__ == "__main__":
 
     recompute = False
-    compensate = False
+    compensate = True
     train = True
     train_names = "./Datasets/ascii_names.txt"
     valid_names = "./Datasets/Validation_Inds.txt"
