@@ -9,4 +9,5 @@ This second work consists on training and testing a 2-layer network with multipl
 
 ### assignment 3
 The aim of this third assignment is to train a Convolutinal Neural Network (CNN or ConvNet) to predict the language of a surname from its spelling. In order to make this assignment "slightly harder", all accented letter were removed and replaced with its non-accented version thus considering only the letters in the English alphabet.
+
 All the code was written from scratch based on the mathematical equations explained in the course and other reference papers. Deep Learning/Machine Learning libraries were never used.
