@@ -483,12 +483,12 @@ class ConvNet:
                     self.bestF = self.F
                     self.bestW = self.W
 
-        #self.ConfusionMatrix(trainX, trainY, MF)
+        self.ConfusionMatrix(trainX, trainY, MF)
 
         return totalTrainCost, totalValidateCost, accuracy, bestAccuracy
 
     def ConfusionMatrix(self, X, Y, MF):
-        P = self.EvaluateClassifier(X, MF, self.W)
+        P, _, _ = self.EvaluateClassifier(X, MF, self.W)
         P = np.argmax(P, axis=0)
         T = np.argmax(Y, axis=0)
 
@@ -498,6 +498,8 @@ class ConvNet:
 
         for i in range(len(P)):
             M[T[i]][P[i]] += 1
+
+        print('\n')
         print(M)
 
     def Plotter(self, trainCost, validateCost):
@@ -510,11 +512,11 @@ class ConvNet:
         plt.savefig('./Result_Pics/cost2.png')
 
     def Test(self, X):
-        MF = self.fConvolutionMatrices(self.F, self.n_len, self.n_len1)
+        MF = self.fConvolutionMatrices(self.bestF, self.n_len, self.n_len1)
         labels = ["Arabic", "Chinese", "Czech", "Dutch", "English", "French", "German", "Greek", "Irish", "Italian",
                   "Japanese", "Korean", "Polish", "Portuguese", "Russian", "Scottish", "Spanish", "Vietnamese"]
         for i in range(X.shape[1]):
-            P = self.EvaluateClassifier(X[:, [i]], MF, self.W)
+            P, _, _ = self.EvaluateClassifier(X[:, [i]], MF, self.bestW)
             label = np.argmax(P)
 
             print(names[i] + " is a name from " + labels[label])
@@ -530,16 +532,20 @@ class ConvNet:
     def ReadParameters(self):
 
         with open('Result_Parameters/best_F.txt', 'rb') as f:
-            self.F = np.load(f)
+            self.F = np.load(f, allow_pickle=True)
+
+        self.bestF = self.F
 
         with open('Result_Parameters/best_W.txt', 'rb') as f:
-            self.W = np.load(f)
+            self.W = np.load(f, allow_pickle=True)
+
+        self.bestW = self.W
 
 
 if __name__ == "__main__":
 
     recompute = False
-    compensate = True
+    compensate = False
     train = True
     train_names = "./Datasets/ascii_names.txt"
     valid_names = "./Datasets/Validation_Inds.txt"
