@@ -1,5 +1,3 @@
-from functions import *
-
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
@@ -192,7 +190,7 @@ class ConvNet:
         self.k2 = 3  # width of filters applied in layer 2
 
         # training parameters
-        self.eta = 0.01
+        self.eta = 0.001
         self.rho = 0.9
 
         # dimensional parameters
@@ -215,8 +213,6 @@ class ConvNet:
         F2 = np.random.randn(self.n1, self.k2, self.n2) * (2 / self.n2)
         F.append(F2)
         W = np.random.randn(dataset.K, self.n_len2*self.n2) * (2 / self.n2)
-
-        #print('El n_len2 vale ' + str(self.n_len2))
 
         return F, W
 
@@ -277,22 +273,12 @@ class ConvNet:
     def EvaluateClassifier(self, X, MF, W):
         from functions import softmax
 
-        #X_width = len(X[0])
-        #X_height = len(X)
+        x1 = self.ReluActivation(np.dot(MF[0], X))
+        X1 = x1
 
-        x1 = self.ReluActivation(np.dot(MF[0], X)) #.reshape((X_width*X_height, 1), order='F'))
-        X1 = x1#.T
+        x2 = self.ReluActivation(np.dot(MF[1], X1))
+        X2 = x2
 
-        #X1_width = len(X1[0])
-        #X1_height = len(X1)
-
-        x2 = self.ReluActivation(np.dot(MF[1], X1))#.reshape((X1_width*X1_height, 1), order='F'))
-        X2 = x2#.T
-
-        #X2_width = len(X2[0])
-        #X2_height = len(X2)
-
-        #s = W * X2.reshape((X2_width*X2_height, 1), order='F')
         s = np.dot(W, X2)
         p = softmax(s)
 
@@ -327,18 +313,10 @@ class ConvNet:
         n = X.shape[1]
         for j in range(n):
             gj = G[:, [j]]
-            xj = X[:, [j]]
 
-            #Mj = self.xConvolutionMatrices(xj, self.data.d, self.k1, self.n1)
             Mj = np.asarray(MX[idx[j]].todense())
             v = np.dot(gj.T, Mj)
             grad_F1 += v.reshape(self.F[0].shape, order='F') / n
-
-        '''''
-        self.W_momentum = self.W_momentum * self.rho + self.eta * grad_W
-        self.F2_momentum = self.F2_momentum * self.rho + self.eta * grad_F2
-        self.F1_momentum = self.F1_momentum * self.rho + self.eta * grad_F1
-        '''''
 
         return grad_W, grad_F1, grad_F2
 
@@ -363,12 +341,6 @@ class ConvNet:
     def MiniBatchGD(self, X, Y, W, MX, idx):
 
         grad_W, grad_F1, grad_F2 = self.ComputeGradients(X, Y, W, MX, idx)
-
-        ''''
-        W_t = self.W - self.eta * grad_W
-        F1_t = self.F[0] - self.eta * grad_F1
-        F2_t = self.F[1] - self.eta * grad_F2
-        '''''
 
         self.W_momentum = self.W_momentum * self.rho + self.eta * grad_W
         self.F2_momentum = self.F2_momentum * self.rho + self.eta * grad_F2
@@ -422,8 +394,7 @@ class ConvNet:
         if compensate:
             n_batch = floor((min_class * len(self.data.balance_train)) / batch_size)
         else:
-            #n_batch = floor(N / batch_size)
-            n_batch = 7
+            n_batch = floor(N / batch_size)
 
         for n in range(n_epochs):
             m = 0
@@ -464,7 +435,7 @@ class ConvNet:
                 self.F[1] -= self.F2_momentum
                 self.W -= self.W_momentum
 
-            if n % 100 == 0:
+            if n % (n_epochs/50) == 0:
                 MF_1, MF_2 = self.fConvolutionMatrices(self.F, self.n_len, self.n_len1)
                 MF = [MF_1, MF_2]
 
@@ -546,25 +517,15 @@ class ConvNet:
 if __name__ == "__main__":
 
     recompute = False
-    compensate = True
+    compensate = False
     train = True
+
     train_names = "./Datasets/ascii_names.txt"
     valid_names = "./Datasets/Validation_Inds.txt"
 
     dataset = DatasetManager(recompute, train_names, valid_names)
 
     convnet = ConvNet(dataset)
-
-    ''''
-    print(len(dataset.oneHotLabels_train[0]))
-    print(len(dataset.oneHotLabels_valid[0]))
-    print(len(dataset.oneHotNames_train[0]))
-    print(len(dataset.oneHotNames_valid[0]))
-
-    print(dataset.oneHotLabels_train)
-    print('\n')
-    print(dataset.oneHotLabels_valid)
-    '''''
 
     if train:
         trainCost, validateCost, finalAccuracy, bestAccuracy = convnet.Train(dataset.oneHotNames_train,
@@ -581,9 +542,6 @@ if __name__ == "__main__":
         print('\nThe best accuracy is: ' + str(bestAccuracy))
     else:
         convnet.ReadParameters()
-
-    #print('\nThe resulting confusion Matrix is:')
-    #print(confusionMatrix)
 
     names = ["Ferrer", "O'Neill", "Merkel", "Sutton", "Caracciolo", "Kurtz", "Manzanares", "Gonzalez", "Fraile", "Coya"]
     oneHotFriendNames = dataset.OneHotNames(names, dataset.d, dataset.n_len, dataset.alphabet)
