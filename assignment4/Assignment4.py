@@ -190,7 +190,6 @@ class RNN:
             grad_h_t = self.W.T.dot(grad_h[:, t+1]).dot(diag_tplus1) + np.dot(self.V.T, grad_o[:, t])
             grad_h[:, t] = grad_h_t
 
-
         #grad_h = np.fliplr(grad_h)
         #print('El gradiente de h')
         #print(grad_h.shape)
@@ -286,10 +285,7 @@ class RNN:
         #N = X.shape[1]
         batch_size = 100
 
-        accuracy = 0
-        bestAccuracy = 0
-        totalTrainCost = []
-        totalValidateCost = []
+        total_loss = []
 
         for n in range(n_epochs):
             sys.stdout.write('\rEpoch number ' + str(n+1) + ' of ' + str(n_epochs))
@@ -317,8 +313,10 @@ class RNN:
 
                 if i % 1000 == 0:
                     loss, smooth_loss = self.ComputeLoss(X, Y)
-                    print('\nTHE LOSS: ' + str(loss))
-                    print('THE SMOOTH_LOSS: ' + str(smooth_loss) + '\n')
+                    #print('\nTHE LOSS: ' + str(loss))
+                    #print('THE SMOOTH_LOSS: ' + str(smooth_loss) + '\n')
+                    #print("ite:", i, "smooth_loss:", smooth_loss)
+                    total_loss.append(smooth_loss)
 
                 if i % 1000 == 0:
                     Y_temp = self.SynthText(X, hprev, 200)
@@ -327,6 +325,14 @@ class RNN:
                         string += self.data.ind_to_char(Y_temp[:, [j]])
 
                     print(string)
+
+        Y_temp = self.SynthText(self.data.char_to_ind("H", self.data.uchars).T, self.h, 1000)
+        string = ""
+        for i in range(Y_temp.shape[1]):
+            string += self.data.ind_to_char(Y_temp[:, [i]], self.data.uchars)
+        print(string)
+
+        self.SaveParameters(total_loss)
 
     def SynthText(self, X, hprev, a):
 
@@ -344,16 +350,38 @@ class RNN:
 
         return Y
 
+    def SaveParameters(self, loss):
+
+        with open('Result_Parameters/total_loss.txt', 'wb') as f:
+            np.save(f, loss)
+
+    def ReadParameters(self):
+
+        with open('Result_Parameters/total_loss.txt', 'rb') as f:
+            loss = np.load(f, allow_pickle=True)
+
+        return loss
+
+    def Plot(self):
+        loss = self.ReadParameters()
+
+        plt.plot(loss, label="training loss")
+        plt.xlabel('epoch (x100)')
+        plt.ylabel('smooth loss')
+        plt.legend()
+        plt.savefig('graph.png')
+        plt.show()
 
 if __name__ == '__main__':
 
     datafile = './Datasets/goblet_book.txt'
-    n_epochs = 2
+    n_epochs = 4
+    retrain = True
 
     dataset = DatasetManager(datafile)
 
     rnn = RNN(dataset)
+    if retrain:
+        rnn.Train(n_epochs)
 
-    rnn.Train(n_epochs)
-
-    print('Hello RNN!')
+    rnn.Plot()
